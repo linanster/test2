@@ -84,6 +84,15 @@ def work(pool):
     pool.return_conn(conn)
     print('{} | {} | done and return {}'.format(mytime(), mythread(), conn))
 
+def gen_insert_sql(table, fields, record):
+    fields_pattern = ','.join(['{}' for _ in range(len(fields))])
+    sql_insert_pattern = 'insert into {} ({}) values {}'.format('{}', fields_pattern, '{}')
+    # print('==pattern==', sql_insert_pattern)
+    return sql_insert_pattern.format(table, *fields, record)
+
+# print(gen_insert_sql('stu', src_fields, ('nan', 32)))
+# input()
+
 class Task:
     def __init__(self, src_record, dest_pool, dest_fields, dest_table):
         self.src_record = src_record
@@ -95,7 +104,8 @@ class Task:
         dest_conn = myconn.conn
         dest_cursor = dest_conn.cursor()
         # todo: check if exist in dest table
-        sql_insert_str = 'insert into {} ({},{}) values (\"{}\",{})'.format(self.dest_table, *self.dest_fields, *self.src_record)
+        # sql_insert_str = 'insert into {} ({},{}) values (\"{}\",{})'.format(self.dest_table, *self.dest_fields, *self.src_record)
+        sql_insert_str = gen_insert_sql(self.dest_table, self.dest_fields, self.src_record)
         print('==sql_insert_strl==', sql_insert_str)
         try:
             dest_cursor.execute(sql_insert_str)
@@ -142,14 +152,20 @@ class MyThreadPool:
         for _ in range(self.num):
             self.work_queue.put(-1)
 
+def gen_select_sql(fields, table):
+    fields_pattern = ','.join(['{}' for _ in range(len(fields))])
+    # sql_select_pattern = 'select' + ' ' + fields_pattern + ' ' + 'from' + ' ' + '{}'
+    sql_select_pattern = 'select {} from {}'.format(fields_pattern, table)
+    return sql_select_pattern.format(*fields, table)
+    
+    
+
 class SrcUtils:
     def __init__(self):
         self.src_pool = ConnPool('src', 1, src_host, src_port, src_user, src_passwd, src_db)
         self.src_myconn = self.src_pool.get_conn()
         self.src_cursor = self.src_myconn.conn.cursor()
-        fields_pattern = ','.join(['{}' for _ in range(len(src_fields))])
-        sql_select_pattern = 'select' + ' ' + fields_pattern + ' ' + 'from' + ' ' + '{}'
-        sql_select_str = sql_select_pattern.format(*src_fields, src_table)
+        sql_select_str = gen_select_sql(src_fields, src_table)
         print('==sql_select_str==', sql_select_str)
         self.src_cursor.execute(sql_select_str)
     def fetchone(self):
